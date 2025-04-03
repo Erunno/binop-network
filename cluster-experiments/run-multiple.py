@@ -8,7 +8,7 @@ import concurrent.futures
 
 # Configuration constants
 LOG_DIR = Path("logs")
-PROCESS_COUNT = 4  # Number of parallel processes
+PROCESS_COUNT = 64  # Number of parallel processes
 MAX_STEPS = 1_000_000   # Maximum steps per process
 
 # Parameter variations
@@ -18,15 +18,22 @@ LAYER_CONFIGS = [
     [25, 18, 12, 8, 5, 3, 1],
     [12, 9, 7, 5, 3, 2, 1],
     [30, 20, 15, 10, 5, 1],
+    [10, 8, 6, 4, 2, 1],
+    [20, 15, 10, 5, 3],
+    [25, 18, 12, 7, 3],
+    [15, 12, 9, 6, 3],
+    [12, 9, 6, 3],
+    [30, 25, 20, 15, 10],
 ]
 
-MIX_UP_COEFFICIENTS = [0.05, 0.1, 0.15, 0.2]
+MIX_UP_COEFFICIENTS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
 
 STOCHASTIC_CONFIGS = [
     [(2, 10000), (3, 8000), (4, 5000)],
     [(2, 5000), (3, 4000), (4, 3000)],
     [(2, 15000), (3, 10000)],
     [(3, 12000), (4, 8000), (5, 4000)],
+    [(2, 15000), (3, 12000), (4, 8000), (5, 4000)],
 ]
 
 SEED_BASE = 1000  # Base seed value (process_id will be added to this)
