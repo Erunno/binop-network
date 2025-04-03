@@ -36,7 +36,7 @@ class GradientDescent:
         
         while best_score < 1 and steps < max_steps:
             stats = self.evaluator.get_statistics().replace('\n', ', ')
-            print(f"Step {steps} -- stats - {stats}")
+            print(f"Step {steps} -- stats - {stats}", flush=True)
             
             if not did_step:
                 # print(" -- Refreshing network, network score was:", self.evaluator.evaluate())

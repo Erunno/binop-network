@@ -1,8 +1,0 @@
-Job started at Thu Apr  3 06:58:12 PM CEST 2025
-Running on ampere01.gpulab.local
-SLURM_JOBID: 157505
-SLURM_JOB_NODELIST: ampere01
-SLURM_CPUS_ON_NODE: 64
-Project directory: /home/brabecm4/phd/binop-network/cluster-experiments
-Timestamp: 20250403-185812
-Using 64 parallel processes
