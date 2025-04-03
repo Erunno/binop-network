@@ -29,7 +29,7 @@ class GradientDescent:
 
         return self
 
-    def run(self, max_steps: int = 1000000):
+    def run(self, max_steps: int = 1_000_000):
         best_score = 0
         steps = 0
         did_step = True
@@ -61,6 +61,9 @@ class GradientDescent:
 
         if steps >= max_steps:
             print("Max steps reached")
+
+        if best_score >= 1:
+            print("Optimal network found !!!!!!!!!!!")
 
         print(f"Final score: {best_score}")
         print("Final network:")

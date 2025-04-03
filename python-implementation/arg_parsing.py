@@ -14,7 +14,7 @@ def parse_arguments():
                         help='Size of input vector')
     
     # Training parameters
-    parser.add_argument('--max-steps', type=int, default=1000,
+    parser.add_argument('--max-steps', type=int, default=1_000_000,
                         help='Maximum number of training steps')
     parser.add_argument('--mix-up', type=float, default=0.1,
                         help='Mix-up coefficient for network perturbation')
