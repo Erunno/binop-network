@@ -1,7 +1,7 @@
 from itertools import product
 import json
 import random
-random.seed(420)
+random.seed(4200)
 
 class Function:
     def eval(self, input_values: list[int]) -> int:
@@ -224,41 +224,142 @@ class NetworkExplorer:
 
         layer.neurons[state.neuron_idx] = (layer.neurons[state.neuron_idx] + function_offset) % len(layer.functions)
 
+class Metrics:
+    """Collection of standard evaluation metrics for neural networks."""
+    
+    @staticmethod
+    def accuracy(predicted_outputs, expected_outputs):
+        """Calculate accuracy (correct predictions / total predictions)"""
+        correct = 0
+        total = len(predicted_outputs)
+        
+        for i in range(total):
+            if predicted_outputs[i] == expected_outputs[i]:
+                correct += 1
+                
+        return correct / total if total > 0 else 0
+    
+    @staticmethod
+    def _check_binary_output(predicted_outputs, expected_outputs):
+        """Check if outputs are binary for binary classification metrics"""
+        # Flatten outputs if they're lists of lists with single elements
+        if predicted_outputs and isinstance(predicted_outputs[0], list) and len(predicted_outputs[0]) == 1:
+            flat_predicted = [p[0] for p in predicted_outputs]
+        else:
+            flat_predicted = predicted_outputs
+            
+        if expected_outputs and isinstance(expected_outputs[0], list) and len(expected_outputs[0]) == 1:
+            flat_expected = [e[0] for e in expected_outputs]
+        else:
+            flat_expected = expected_outputs
+            
+        return flat_predicted, flat_expected
+    
+    @staticmethod
+    def precision(predicted_outputs, expected_outputs):
+        """Calculate precision (true positives / (true positives + false positives))"""
+        predicted, expected = Metrics._check_binary_output(predicted_outputs, expected_outputs)
+        
+        true_positives = 0
+        false_positives = 0
+        
+        for i in range(len(predicted)):
+            if predicted[i] == 1:
+                if expected[i] == 1:
+                    true_positives += 1
+                else:
+                    false_positives += 1
+                    
+        return true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    
+    @staticmethod
+    def recall(predicted_outputs, expected_outputs):
+        """Calculate recall (true positives / (true positives + false negatives))"""
+        predicted, expected = Metrics._check_binary_output(predicted_outputs, expected_outputs)
+        
+        true_positives = 0
+        false_negatives = 0
+        
+        for i in range(len(predicted)):
+            if expected[i] == 1:
+                if predicted[i] == 1:
+                    true_positives += 1
+                else:
+                    false_negatives += 1
+                    
+        return true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
+    
+    @staticmethod
+    def f1_score(predicted_outputs, expected_outputs):
+        """Calculate F1 score (2 * (precision * recall) / (precision + recall))"""
+        precision = Metrics.precision(predicted_outputs, expected_outputs)
+        recall = Metrics.recall(predicted_outputs, expected_outputs)
+        
+        return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
 class NetworkEvaluator:
+    def __init__(self):
+        self.network = None
+        self.input_values = []
+        self.expected_outputs = []
+        self.evaluation_metric = Metrics.accuracy
+        self.statistics_metrics = {
+            'accuracy': Metrics.accuracy,
+            'precision': Metrics.precision,
+            'recall': Metrics.recall,
+            'f1_score': Metrics.f1_score
+        }
+
     def set_network(self, network: Network):
         self.network = network
-
-        self.layer_idx = 0
-        self.neuron_idx = 0
-
         return self
 
     def set_inputs(self, input_values: list[list[int]], expected_outputs: list[list[int]]):
         self.input_values = input_values
         self.expected_outputs = expected_outputs
-
         return self
 
     def set_inputs_based_on_function(self, function: callable, input_size: int):
         self.input_values = list([list(x) for x in product([0, 1], repeat=input_size)])
         self.expected_outputs = list([function(inputs) for inputs in self.input_values])
         return self
-
-    def evaluate(self) -> list[int]:
-        correct = 0
-
-        for i in range(len(self.input_values)):
-            inputs = self.input_values[i]
-            expected = self.expected_outputs[i]
-
-            output = self.network.evaluate(inputs)
-
-            if output == expected:
-                correct += 1
-
-        return correct / len(self.input_values)
     
-
+    def set_evaluation_metric(self, metric_function: callable):
+        self.evaluation_metric = metric_function
+        return self
+    
+    def configure_statistics(self, metrics_dict: dict[str, callable]):
+        self.statistics_metrics = metrics_dict
+        return self
+    
+    def evaluate(self) -> float:
+        predicted_outputs = []
+        
+        for inputs in self.input_values:
+            output = self.network.evaluate(inputs)
+            predicted_outputs.append(output)
+            
+        return self.evaluation_metric(predicted_outputs, self.expected_outputs)
+    
+    def get_statistics(self) -> str:
+        if not self.statistics_metrics:
+            return "No statistics metrics configured."
+        
+        predicted_outputs = []
+        for inputs in self.input_values:
+            output = self.network.evaluate(inputs)
+            predicted_outputs.append(output)
+        
+        results = []
+        for name, metric_function in self.statistics_metrics.items():
+            try:
+                value = metric_function(predicted_outputs, self.expected_outputs)
+                results.append(f"{name}: {value:.4f}")
+            except Exception as e:
+                results.append(f"{name}: Error - {str(e)}")
+                
+        return "\n".join(results)
+    
     def test_data_json(self):
         zipped = zip(self.input_values, self.expected_outputs)
 
@@ -270,16 +371,87 @@ class NetworkEvaluator:
                 } for input_values, expected_output in zipped
             ]
         }
+
+class NetworkRandomEditor:
+    class NeuronStates:
+        def __init__(self, ):
+            self.states = []
+
+        def save(self, layer_idx: int, neuron_idx: int, function_idx: int):
+            self.states.append((layer_idx, neuron_idx, function_idx))
+            
+        def apply(self, network: Network):
+            for layer_idx, neuron_idx, function_idx in reversed(self.states):
+                layer: Layer = network.layers[layer_idx]
+                layer.neurons[neuron_idx] = function_idx
+
+        def clear(self):
+            self.states = []
+
+        def clone(self):
+            clone = NetworkRandomEditor.NeuronStates()
+            clone.states = list([state for state in self.states])
+
+            return clone
+
+    def set_network(self, network: Network):
+        self.network = network
+        self.last_state = NetworkRandomEditor.NeuronStates()
+        self.last_performed_changes = NetworkRandomEditor.NeuronStates()
+
+        return self
+
+    def do_change_to_the_network(self, changed_neurons_count: int):
+        for _ in range(changed_neurons_count):
+            layer_idx = random.randint(0, len(self.network.layers) - 1)
+            layer = self.network.layers[layer_idx]
+
+            neuron_idx = random.randint(0, layer.size - 1)
+
+            changed_function_idx = random.randint(0, len(layer.functions) - 1)
+            old_function_idx = layer.neurons[neuron_idx]
+
+            self.last_state.save(layer_idx, neuron_idx, old_function_idx)
+            self.last_performed_changes.save(layer_idx, neuron_idx, changed_function_idx)
+
+            layer.neurons[neuron_idx] = changed_function_idx
+
+        return self
     
+    def undo_changes(self):
+        self.last_state.apply(self.network)
+
+        self.last_state.clear()
+        self.last_performed_changes.clear()
+
+        return self
+    
+    def get_changes(self) -> 'NetworkRandomEditor.NeuronStates':
+        return self.last_performed_changes.clone()
+
+class StochasticExplorationConfig:
+    def __init__(self):
+        self.samples_per_distance: list[tuple[int, int]] = []
+
+    def set_samples_per_distance(self, distance: int, samples: int):
+        self.samples_per_distance.append((distance, samples))
+        return self
+    
+    def get_samples_per_distance(self) -> list[tuple[int, int]]:
+        return sorted(self.samples_per_distance, key=lambda x: x[0])
+    
+
 class GradientDescent:
-    
     def configure(self,
                   network: Network,
                   evaluator: NetworkEvaluator,
-                  mix_up_coefficient: float = 0.1):
+                  mix_up_coefficient: float = 0.1,
+                  stochastic_exploration_config: StochasticExplorationConfig = None):
+        
         self.network: Network = network
         self.evaluator: NetworkEvaluator = evaluator.set_network(network)
         self.mix_up_coefficient = mix_up_coefficient
+        self.stochastic_exploration_config: StochasticExplorationConfig = stochastic_exploration_config
 
         return self
 
@@ -289,12 +461,13 @@ class GradientDescent:
         did_step = True
         
         while best_score < 1 and steps < max_steps:
-            print(f"Step {steps}:")
+            stats = self.evaluator.get_statistics().replace('\n', ', ')
+            print(f"Step {steps} -- stats - {stats}")
             
             if not did_step:
                 # print(" -- Refreshing network, network score was:", self.evaluator.evaluate())
                 # self._refresh_network()
-                print(" -- Mixing up the network, network score was:", self.evaluator.evaluate())
+                print(" -- Mixing up the network, network stats -", self.evaluator.get_statistics().replace('\n', ', '))
                 self._mix_up_the_network()
 
             did_step = self._do_step()
@@ -302,8 +475,9 @@ class GradientDescent:
 
             if score > best_score:
                 best_score = score
-                
-                print (f"New best score: {best_score}, network:")
+
+                stats = self.evaluator.get_statistics().replace('\n', ', ')
+                print (f"New best score - {best_score} (stats - {stats}), network:")
                 print(self.network)
                 print("JSON:")
                 print(json.dumps(self.network.json()))
@@ -319,6 +493,20 @@ class GradientDescent:
         print(self.network)
 
     def _do_step(self):
+        one_step_successful = self._do_one_change_step()
+        if one_step_successful:
+            return True
+        
+        print(" -- One step was not successful, trying stochastic exploration")
+
+        stochastic_step_successful = self._do_stochastic_exploration_steps()
+
+        if stochastic_step_successful:
+            print(" -- Stochastic step was successful")
+
+        return stochastic_step_successful
+
+    def _do_one_change_step(self):
         explorer = NetworkExplorer().set_network(self.network)
         best_state = None
         best_score = self.evaluator.evaluate()
@@ -341,6 +529,38 @@ class GradientDescent:
 
         return False
     
+    def _do_stochastic_exploration_steps(self):
+        if self.stochastic_exploration_config is None:
+            return False
+        
+        random_editor = NetworkRandomEditor().set_network(self.network)
+        best_score = self.evaluator.evaluate()
+        best_changed_score = 0
+        best_changes = None
+
+        for distance, samples in self.stochastic_exploration_config.get_samples_per_distance():
+            for _ in range(samples):
+                random_editor.do_change_to_the_network(distance)
+
+                score = self.evaluator.evaluate()
+                if score > best_score:
+                    best_score = score
+                    best_changes = random_editor.get_changes()
+                    print (" -- found better model:", self.evaluator.get_statistics().replace('\n', ', '))
+
+                if score > best_changed_score:
+                    best_changed_score = score
+
+                random_editor.undo_changes()
+
+        if best_changes is not None:
+            best_changes.apply(self.network)
+            return True
+        else:
+            print(" -- No better model found, best score was:", best_changed_score)
+        
+        return False
+
     def _refresh_network(self):
         self.network.refresh()
 
@@ -390,9 +610,16 @@ def three_two_bits_and_center(input_values: list[int]) -> int:
 eval = NetworkEvaluator().set_inputs_based_on_function(three_two_bits_and_center, 7)
 
 GradientDescent().configure(
-    network=Network(7, [15, 9, 5, 3, 2, 1]),
+    network=Network(7, [20, 15, 9, 5, 3, 2, 1]),
+    # network=Network(7, [15, 9, 5, 3, 2, 1]),
+    # network=Network(7, [3, 2, 1]),
     evaluator=NetworkEvaluator().set_inputs_based_on_function(three_two_bits_and_center, 7),
-    mix_up_coefficient=.03
+    # mix_up_coefficient=.03,
+    mix_up_coefficient=.05,
+    stochastic_exploration_config=StochasticExplorationConfig()
+        .set_samples_per_distance(2, 10_000)
+        .set_samples_per_distance(3,  8_000)
+        .set_samples_per_distance(4,  5_000)
 ).run(
     max_steps=1000
 )
