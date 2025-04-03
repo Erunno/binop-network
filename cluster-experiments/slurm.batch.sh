@@ -5,7 +5,7 @@
 #SBATCH --mem=64GB             # Memory
 #SBATCH --time=100:00:00       # Time limit (2 hours)
 #SBATCH --gres=gpu:L40:1       # Request 1 L40 GPU
-#SBATCH -o %j.out              # Standard output
+#SBATCH -o %j.slurm.out              # Standard output
 
 # Print job info
 echo "Job started at $(date)"
