@@ -111,6 +111,108 @@ void test_adder_network(netw::network<type_config>& network) {
     std::cout << "==========================" << std::endl;
 }
 
+// Function to test the network with temporary neuron changes
+template <typename type_config>
+void test_with_changed_neurons(netw::network<type_config>& network) {
+    using value_type = typename type_config::value_type;
+    
+    std::cout << "\nTesting with Temporarily Changed Neurons" << std::endl;
+    std::cout << "=====================================" << std::endl;
+    
+    // Create a change list
+    std::vector<netw::neuron_change<type_config>> changes_vec(2); // 2 changes
+    
+    // Modify the first hidden layer's XOR to OR
+    changes_vec[0].layer_index = 0;
+    changes_vec[0].neuron_index = 0;
+    changes_vec[0].op = netw::op<type_config>::OR;
+    changes_vec[0].input1 = 0;
+    changes_vec[0].input2 = 1;
+    
+    // Modify the second hidden layer's XOR to AND
+    changes_vec[1].layer_index = 1;
+    changes_vec[1].neuron_index = 0;
+    changes_vec[1].op = netw::op<type_config>::AND;
+    changes_vec[1].input1 = 0;
+    changes_vec[1].input2 = 2;
+    
+    // Create a change list
+    netw::neuron_change_list<type_config> changes;
+    changes.count = 2;
+    changes.changes = changes_vec.data();
+    
+    // Test a specific input with the modified network
+    std::vector<value_type> input = {1, 0, 1};  // Testing [1,0,1]
+    std::vector<value_type> output(2);
+    
+    // Compute with original network
+    network.compute(input.data(), output.data());
+    std::cout << "Original network result for [1,0,1]: "
+              << static_cast<int>(output[1]) << static_cast<int>(output[0]) << std::endl;
+    
+    // Compute with changed neurons (temporary changes)
+    network.compute_with_changed_neurons(changes, input.data(), output.data());
+    std::cout << "Modified network result for [1,0,1]: "
+              << static_cast<int>(output[1]) << static_cast<int>(output[0]) << std::endl;
+    
+    // Verify the network hasn't been modified by computing again with original network
+    network.compute(input.data(), output.data());
+    std::cout << "Original network result after temp change: "
+              << static_cast<int>(output[1]) << static_cast<int>(output[0]) << std::endl;
+              
+    std::cout << "=====================================" << std::endl;
+}
+
+// Function to test the network after applying permanent changes
+template <typename type_config>
+void test_with_applied_changes(netw::network<type_config>& network) {
+    using value_type = typename type_config::value_type;
+    
+    std::cout << "\nTesting with Permanently Applied Changes" << std::endl;
+    std::cout << "=====================================" << std::endl;
+    
+    // Create a change list
+    std::vector<netw::neuron_change<type_config>> changes_vec(1); // 1 change
+    
+    // Modify the first hidden layer's XOR to AND
+    changes_vec[0].layer_index = 0;
+    changes_vec[0].neuron_index = 0;
+    changes_vec[0].op = netw::op<type_config>::AND;
+    changes_vec[0].input1 = 0;
+    changes_vec[0].input2 = 1;
+    
+    // Create a change list
+    netw::neuron_change_list<type_config> changes;
+    changes.count = 1;
+    changes.changes = changes_vec.data();
+    
+    // Test input [1,1,0]
+    std::vector<value_type> input = {1, 1, 0};
+    std::vector<value_type> output(2);
+    
+    // Compute with original network
+    network.compute(input.data(), output.data());
+    std::cout << "Result before applying changes [1,1,0]: "
+              << static_cast<int>(output[1]) << static_cast<int>(output[0]) << std::endl;
+    
+    // Apply changes permanently
+    changes.apply_changes(&network);
+    std::cout << "Changes permanently applied to network" << std::endl;
+    
+    // Compute with modified network (changes are now permanent)
+    network.compute(input.data(), output.data());
+    std::cout << "Result after applying changes [1,1,0]: "
+              << static_cast<int>(output[1]) << static_cast<int>(output[0]) << std::endl;
+              
+    // Test with more inputs to show the changes are indeed permanent
+    input = {1, 0, 1};
+    network.compute(input.data(), output.data());
+    std::cout << "New result for [1,0,1] after permanent change: "
+              << static_cast<int>(output[1]) << static_cast<int>(output[0]) << std::endl;
+              
+    std::cout << "=====================================" << std::endl;
+}
+
 int main() {
     std::cout << "Binary Neural Network - 3-bit Adder Test" << std::endl;
     std::cout << "=========================================" << std::endl;
@@ -119,8 +221,14 @@ int main() {
     auto network_owner = create_adder_network<netw::SMALLEST_TYPES>();
     auto network = network_owner.get_network_view();
     
-    // Test the network
+    // First, test the original network
     test_adder_network(network);
+    
+    // Test with temporary changes
+    test_with_changed_neurons(network);
+    
+    // Test with permanent changes
+    test_with_applied_changes(network);
     
     return 0;
 }

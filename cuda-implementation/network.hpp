@@ -9,6 +9,9 @@
 namespace netw {
 
 template <typename type_config>
+struct network;
+
+template <typename type_config>
 struct op {
     using index_type = typename type_config::index_type;
 
@@ -32,6 +35,26 @@ struct neuron {
 };
 
 template <typename type_config>
+struct neuron_change : public neuron<type_config> {
+    using index_type = typename type_config::index_type;
+    using value_type = typename type_config::value_type;
+
+    index_type layer_index;
+    index_type neuron_index;
+};
+
+template <typename type_config>
+struct neuron_change_list {
+    using size_type = typename type_config::size_type;
+    using value_type = typename type_config::value_type;
+
+    size_type count;
+    neuron_change<type_config>* changes;
+    
+    __host__ __device__ void apply_changes(network<type_config>* net);
+};
+
+template <typename type_config>
 struct layer {
     using size_type = typename type_config::size_type;
     using value_type = typename type_config::value_type;
@@ -41,6 +64,9 @@ struct layer {
     neuron<type_config>* neurons;
 
     __host__ __device__ void compute(const value_type* input, value_type* output);
+    __host__ __device__ void compute_with_changed_neurons(
+        neuron_change_list<type_config> changes, size_type layer_index,
+        const value_type* input, value_type* output);
 };
 
 template <typename type_config>
@@ -57,6 +83,9 @@ struct network {
     value_type* working_memory_2;
 
     __host__ __device__ void compute(const value_type* input, value_type* output);
+    __host__ __device__ void compute_with_changed_neurons(
+        neuron_change_list<type_config> changes,
+        const value_type* input, value_type* output); 
 };
 
 struct SMALLEST_TYPES {
