@@ -4,21 +4,16 @@ from evaluation import NetworkEvaluator
 def gol_func(i1, i2, i3, i4, i5, i6, i7):
     # Hidden layer 1
     h1_0 = i2 | i6
-    # h1_1 = i2 ^ i7
     h1_2 = i1 & i4
     h1_3 = i3 | i4
     h1_4 = i1
-    # h1_5 = i2
-    # h1_6 = i2 ^ i6
     h1_7 = i3 ^ i5
     h1_8 = i1 ^ i3
 
     # Hidden layer 2
-    # h2_0 = h1_1 ^ h1_5
     h2_0 = i7
     h2_1 = h1_4 ^ h1_7
     h2_2 = h1_7 & h1_8
-    # h2_3 = h1_0 ^ h1_6
     h2_3 = i2 & i6
     h2_4 = h1_0 ^ h1_3
     h2_5 = h1_0 & h1_2
