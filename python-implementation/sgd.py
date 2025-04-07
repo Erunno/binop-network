@@ -68,6 +68,8 @@ class GradientDescent:
         print(f"Final score: {best_score}")
         print("Final network:")
         print(self.network)
+        print("JSON:")
+        print(json.dumps(self.network.json()))
 
     def _do_step(self):
         one_step_successful = self._do_one_change_step()

@@ -131,6 +131,11 @@ class NetworkEvaluator:
         self.expected_outputs = list([function(inputs) for inputs in self.input_values])
         return self
     
+    def filter_inputs(self, filter_function: callable):
+        self.expected_outputs = [self.expected_outputs[i] for i in range(len(self.expected_outputs)) if filter_function(self.input_values[i])]
+        self.input_values = [inputs for inputs in self.input_values if filter_function(inputs)]
+        return self
+
     def set_evaluation_metric(self, metric_function: callable):
         self.evaluation_metric = metric_function
         return self
