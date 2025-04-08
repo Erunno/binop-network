@@ -101,3 +101,26 @@ class Network:
             ret_val += f"  {layer}\n"
 
         return ret_val + ')'
+
+    @staticmethod
+    def from_json(json_string: str) -> 'Network':
+        data = json.loads(json_string)
+        input_size = data['input_size']
+        layers = []
+
+        def find_index(functions: list[Function], function: Function) -> int:
+            for i, f in enumerate(functions):
+                if f.is_same(function):
+                    return i
+            raise ValueError("Function not found in the list")
+
+        for layer_data in data['layers']:
+            layer = Layer(layer_data['input_size'], len(layer_data['neurons']), use_random=False)
+            neuron_functions = [Function.from_json(json.dumps(neuron)) for neuron in layer_data['neurons']]
+            layer.neurons = [find_index(layer.functions, neuron_func) for neuron_func in neuron_functions]
+            layers.append(layer)
+
+        network = Network(input_size, [layer.size for layer in layers], False)
+        network.layers = layers
+
+        return network
