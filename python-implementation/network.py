@@ -79,6 +79,18 @@ class Network:
 
         return input_values
 
+    def evaluate_get_values_of_all(self, input_values: list[int]) -> list[list[int]]:
+        if len(input_values) != self.input_size:
+            raise ValueError(f"Input values size does not match the number of functions in the first layer ({self.input_size}), got {len(input_values)})")
+        
+        values = [[*input_values]]
+
+        for layer in self.layers:
+            input_values = layer.eval(input_values)
+            values.append([*input_values])
+
+        return values
+
     def refresh(self):
         for layer in self.layers:
             layer.refresh()
@@ -124,3 +136,85 @@ class Network:
         network.layers = layers
 
         return network
+
+    def get_pruned(self):
+        """
+        Prunes the network by removing neurons that aren't connected to the output.
+        Returns a new Network with only the neurons that influence the output.
+        """
+        # Create a deep copy of the network structure
+        original_network = json.loads(json.dumps(self.json()))
+        
+        # Track connected neurons in each layer
+        connected_neurons = {}
+        for i in range(len(original_network['layers'])):
+            connected_neurons[i] = set()
+        
+        # Start with all output neurons (last layer) marked as connected
+        output_layer_index = len(original_network['layers']) - 1
+        for i in range(len(original_network['layers'][output_layer_index]['neurons'])):
+            connected_neurons[output_layer_index].add(i)
+        
+        # Trace backward from outputs to inputs to find connected neurons
+        for layer_index in range(output_layer_index, 0, -1):
+            layer = original_network['layers'][layer_index]
+            prev_layer_index = layer_index - 1
+            
+            # For each connected neuron in this layer
+            for neuron_index in connected_neurons[layer_index]:
+                neuron = layer['neurons'][neuron_index]
+                
+                # Mark all input sources to this neuron as connected
+                for arg_index in neuron.get('arguments_indexes', []):
+                    connected_neurons[prev_layer_index].add(arg_index)
+        
+        # Create the pruned network structure
+        pruned_network = {
+            'input_size': original_network['input_size'],
+            'layers': []
+        }
+        
+        # Keep track of index mappings from original to pruned network
+        index_mappings = {}
+        
+        # Process each layer to build the pruned network
+        for layer_index in range(len(original_network['layers'])):
+            original_layer = original_network['layers'][layer_index]
+            
+            # Create mapping from original indices to new indices
+            index_mappings[layer_index] = {}
+            new_neurons = []
+            new_index = 0
+            
+            # For each neuron in this layer
+            for i in range(len(original_layer['neurons'])):
+                # Only include if it's connected to outputs
+                if i in connected_neurons[layer_index]:
+                    # Record the mapping of original index to new index
+                    index_mappings[layer_index][i] = new_index
+                    new_index += 1
+                    
+                    # Clone the neuron
+                    original_neuron = original_layer['neurons'][i]
+                    new_neuron = json.loads(json.dumps(original_neuron))  # Deep copy
+                    
+                    # Remap argument indexes for non-first layers
+                    if layer_index > 0 and 'arguments_indexes' in new_neuron:
+                        new_neuron['arguments_indexes'] = [
+                            index_mappings[layer_index - 1].get(arg_idx, 0)  # Fallback to 0 if not found
+                            for arg_idx in new_neuron['arguments_indexes']
+                        ]
+                    
+                    new_neurons.append(new_neuron)
+            
+            # Create the new layer
+            new_layer = {
+                'input_size': original_network['input_size'] if layer_index == 0 
+                               else len(pruned_network['layers'][layer_index - 1]['neurons']),
+                'neurons': new_neurons
+            }
+            
+            pruned_network['layers'].append(new_layer)
+        
+        # Convert the pruned network JSON back to a Network object
+        return Network.from_json(json.dumps(pruned_network))

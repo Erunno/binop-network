@@ -84,18 +84,17 @@ class Metrics:
         false_positives = 0
         false_negatives = 0
         
-        for i in range(len(predicted)):
-            if predicted[i] == 1:
-                if expected[i] == 1:
+        for prediction, expected_value in zip(predicted, expected):
+            for pred_single_val, expected_single_val in zip(prediction, expected_value):
+                if pred_single_val == 1 and expected_single_val == 1:
                     true_positives += 1
-                else:
-                    false_positives += 1
-            else:
-                if expected[i] == 1:
-                    false_negatives += 1
-                else:
+                elif pred_single_val == 0 and expected_single_val == 0:
                     true_negatives += 1
-        
+                elif pred_single_val == 1 and expected_single_val == 0:
+                    false_positives += 1
+                elif pred_single_val == 0 and expected_single_val == 1:
+                    false_negatives += 1
+
         numerator = (true_positives * true_negatives) - (false_positives * false_negatives)
         denominator = ((true_positives + false_positives) * (true_positives + false_negatives) * 
                        (true_negatives + false_positives) * (true_negatives + false_negatives)) ** 0.5
@@ -136,7 +135,15 @@ class NetworkEvaluator:
         self.input_values = [inputs for inputs in self.input_values if filter_function(inputs)]
         return self
 
-    def set_evaluation_metric(self, metric_function: callable):
+    def set_evaluation_metric(self, metric_function: str):
+        if isinstance(metric_function, str):
+            metric_function = getattr(Metrics, metric_function, None)
+            
+            if metric_function is None:
+                raise ValueError(f"Invalid metric name: {metric_function}")
+            
+            return self
+        
         self.evaluation_metric = metric_function
         return self
     
